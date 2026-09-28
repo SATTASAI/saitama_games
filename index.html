@@ -71,6 +71,19 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--jade);outl
 @keyframes jflash{0%{opacity:0}6%{opacity:.8}11%{opacity:0}55%{opacity:0}58%{opacity:.45;background:#8a0000}64%{opacity:0}}
 .jmsg{position:absolute;inset:0;display:grid;place-items:center;color:var(--jade);font-size:1.9cqw;font-style:italic;opacity:0;transition:opacity .9s;pointer-events:none}
 .jmsg.on{opacity:1}
+#notyet{position:absolute;inset:0;z-index:34;display:grid;place-items:center;pointer-events:none;opacity:0}
+#notyet span{font-family:"Charm","Taviraj",serif;font-weight:700;font-size:3.4cqw;color:#bfe6d8;text-shadow:0 0 1.2cqw rgba(120,220,190,.6),0 .2cqw .3cqw #000}
+#notyet.on{animation:nyet 1.7s ease-out}
+@keyframes nyet{0%{opacity:0;background:rgba(0,0,0,0)}12%{opacity:1;background:rgba(0,0,0,.6)}30%{background:rgba(0,0,0,.35)}45%{background:rgba(0,0,0,.6)}100%{opacity:0;background:rgba(0,0,0,0)}}
+#notyet.on span{animation:nyetT 1.7s ease-out}
+@keyframes nyetT{0%{transform:scale(1.3);filter:blur(4px)}20%{transform:scale(1);filter:blur(0)}100%{transform:translateY(-1cqh)}}
+#dash{position:absolute;z-index:32;top:-25%;left:0;height:165%;width:80cqw;pointer-events:none;opacity:0}
+#frame.dim #game,#frame.dim #modal{filter:brightness(.45);transition:filter .12s}
+#dash svg{height:100%;width:100%;overflow:visible;filter:blur(.7cqw)}
+#dash.go{animation:dashLR .5s cubic-bezier(.55,.05,.45,.95) forwards}
+#dash.go.rl{animation-name:dashRL}
+@keyframes dashLR{0%{opacity:.95;transform:translateX(-70cqw) skewX(-14deg) scaleX(1.3)}100%{opacity:.95;transform:translateX(115cqw) skewX(-14deg) scaleX(1.3)}}
+@keyframes dashRL{0%{opacity:.95;transform:translateX(115cqw) skewX(14deg) scaleX(-1.3)}100%{opacity:.95;transform:translateX(-70cqw) skewX(14deg) scaleX(-1.3)}}
 #mashWarn{position:absolute;inset:0;z-index:35;display:grid;place-items:center;pointer-events:none;opacity:0;transition:opacity .5s}
 #mashWarn.on{opacity:1}
 .blood{position:relative;display:inline-block;font-family:"Srisakdi","Chonburi",serif;font-weight:700;font-size:8.5cqw;line-height:1.2;font-style:normal;letter-spacing:.02em;
@@ -407,6 +420,11 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--jade);outl
   </section>
 
   <div id="mashWarn" aria-live="assertive"></div>
+  <div id="notyet" aria-live="polite"><span>ยังไม่ถึงเวลา…</span></div>
+  <div id="dash" aria-hidden="true"><svg viewBox="0 0 130 260" preserveAspectRatio="xMidYMid meet"><g fill="#000">
+    <ellipse cx="52" cy="34" rx="17" ry="21"/><path d="M34 26C27 70 26 125 33 170L71 170C77 125 76 70 70 26Z"/>
+    <path d="M30 68C16 92 12 150 18 260L88 260C94 150 88 92 75 68Z"/><path d="M74 86C96 98 112 118 128 114L129 122C110 130 92 120 71 106Z"/>
+    <path d="M30 88C18 110 10 132 4 150L10 153C18 136 28 118 36 104Z"/></g></svg></div>
   <div id="jump" hidden>
       <div class="jstage">
         <img class="face r" id="jumpR" alt="">
@@ -1146,6 +1164,19 @@ const AU = (() => {
         case "steps": footsteps(t, sfxBus, -.2, .2, 3); break;
         case "ui": clack(t, sfxBus, .02); break;
         case "scream": scream(t, sfxBus); break;
+        case "whoosh": {       // something rushes past, right in front of your face
+          const dir = o.dir || 1, d = .55, n = N(false, t, d + .1), bp = F("bandpass", 250, 1.2), g = G(0), p = P(-dir * .95);
+          n.connect(bp); bp.connect(g); g.connect(p); route(p, sfxBus, .25);
+          bp.frequency.setValueAtTime(250, t); bp.frequency.exponentialRampToValueAtTime(1500, t + d * .45); bp.frequency.exponentialRampToValueAtTime(300, t + d);
+          if (p.pan) { p.pan.setValueAtTime(-dir * .95, t); p.pan.linearRampToValueAtTime(dir * .95, t + d); }
+          g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.5, t + d * .45); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+          thump(t + d * .4, sfxBus, .25, 60); if (lvl > 1) whisperSnd(t + .1, sfxBus, dir * .6, 3, .12);
+          break;
+        }
+        case "flicker": {      // a cold draught bends the candle flame
+          const n = N(true, t, .7), lp = F("lowpass", 500), g = G(0); n.connect(lp); lp.connect(g); route(g, sfxBus, .3); hit(g, t, .12, .22, .5);
+          break;
+        }
         case "mash": {         // each careless tap: the haunting gets louder and changes tone (k 0..1)
           const k = Math.max(0, Math.min(1, o.k || 0)), d = .9 + k * .6, pan = pick([-1, 1]) * R(.3, .9);
           whisperSnd(t, sfxBus, pan, Math.floor(3 + k * 6), .06 + k * .16);                    // whispers, closer and louder
@@ -1221,6 +1252,7 @@ CASES.champa = {
   items:{key:"กุญแจทองเหลือง", ring:"แหวนหมั้น"},
   skills:["อ่านจับใจความ","ตีความคำเปรียบ","อ่านเลขไทย","สะกดคำให้ถูก","เปรียบเทียบหลักฐาน"],
   keyClues:["diary","calendar","letter","envelope","contract","recipe","loveLetters","cloth"],
+  steps:[["diary"],["letter","envelope"],["calendar"],["contract"],["recipe","loveLetters"],["cloth"]],
   intro:{ bg:"c1s1_bg",
     html:`<p>แหวนหมั้นวงนี้เป็นของ <b>แม่จำปา</b> หญิงสาวแห่งเรือนไทยริมคลองบางพรม</p>
       <p>คืนวันเพ็ญ ๑๕ สิงหาคม ๒๕๑๘ ฝนตกหนักทั้งคืน รุ่งเช้ามีคนพบร่างของเธอในบ่อน้ำหลังเรือน ตำรวจสรุปว่าเธอพลัดตกเอง</p>
@@ -1297,7 +1329,7 @@ CASES.champa = {
           {id:"letter",x:55,y:45,w:21,h:25,label:"จดหมายพับไว้",m:"paper",act:()=>showDocOver("letter")}]},
     cabLock:{img:"c1s1_cabinet_lock",panel:"left",doc:"cabSign",overlay:el=>wheelLock(el,LOCK_CAB)},
     cabOpen:{img:"c1s1_cabinet_open",panel:"left",doc:"cabInside",
-      hs:[{id:"contract",x:34.5,y:39,w:24,h:17,label:"เอกสารผนึกครั่ง",m:"paper",act:S=>{ showDocOver("contract"); openKitchenDoor(S); }},
+      hs:[{id:"contract",x:34.5,y:39,w:24,h:17,label:"เอกสารผนึกครั่ง",m:"paper",act:S=>{ if(showDocOver("contract")) openKitchenDoor(S); }},
           {id:"ring",x:58,y:32,w:11,h:25,label:"กล่องแหวน",m:"metal",act:S=>{ if(!S.items.includes("ring")){ S.items.push("ring"); save(); renderBar(); }
             msg("แหวนหมั้น","แหวนทองฝังพลอยสีแดง วงเดียวกับที่อยู่ในร้านของปู่เหม ในกล่องกำมะหยี่มีกระดาษพับเล็ก ๆ เขียนว่า <b>“คืนให้พี่ทองดีวันถอนหมั้น”</b>"); }}]},
     basket:{img:"c1s2_basket",panel:"left",doc:"basketNote",
@@ -1348,9 +1380,9 @@ CASES.champa = {
     {when:S=>!S.items.includes("key")&&!S.flags.chestOpen,l:["อะไรที่ส่องหน้าเราทุกเช้า?","ลองดูกระจกบานรีบนโต๊ะเครื่องแป้ง","กุญแจอยู่ใต้ขาตั้งกระจก"]},
     {when:S=>!S.flags.chestOpen,l:["มีกุญแจแล้ว ลองหาสิ่งที่ถูกล็อกไว้","หีบไม้บนพื้นมีรูกุญแจ","แตะรูกุญแจที่หีบไม้"]},
     {when:S=>!S.read.includes("envelope")||!S.read.includes("letter"),l:["ในหีบมีกระดาษสองชิ้น","อ่านทั้งจดหมายและซองจดหมาย","หน้าซองมีเลขที่บ้านของจำปา"]},
+    {when:S=>!S.read.includes("calendar"),l:["จดหมายนัดพบคืนวันเพ็ญ ลองหาว่าคืนนั้นคือวันที่เท่าไร","อ่านปฏิทินเดือนสิงหาคมบนผนังห้องนอน","ดูว่าลุงเผือกอยู่ที่ไหนในคืนวันเพ็ญ"]},
     {when:S=>!S.flags.cabOpen,l:["ตู้ไม้สักล็อกด้วยรหัส ๓ หลัก","รหัสคือเลขที่บ้าน อ่านได้จากหน้าซองจดหมาย","หมุนวงล้อเป็น ๒ – ๔ – ๗"]},
     {when:S=>!S.read.includes("contract"),l:["ในตู้มีเอกสารผนึกครั่ง","อ่านหนังสือสัญญากู้ยืมเงิน","ใครยืมเงินใคร เท่าไร"]},
-    {when:S=>!S.read.includes("calendar"),l:["ปฏิทินบนผนังมีวันที่วงไว้","อ่านปฏิทินเดือนสิงหาคม","ดูว่าลุงเผือกอยู่ที่ไหนในคืนวันเพ็ญ"]},
     {when:S=>!S.read.includes("recipe"),l:["ไปที่ครัว ลองดูบนโต๊ะ","ใต้กระบุงขนมมีกระดาษพับ","สูตรขนมบอกว่าพี่สมศรีเขียนหนังสือได้หรือไม่"]},
     {when:S=>!S.read.includes("loveLetters"),l:["ชั้นวางของในครัวมีกล่องเก่าใบหนึ่ง","อ่านจดหมายรักในกล่องขนมปัง","เทียบลายมือกับจดหมายนัดในหีบ"]},
     {when:S=>!S.flags.kitOpen,l:["ประตูหลังบ้านล็อกด้วยวงล้อคำ","จดหมายนัดบอกว่านัดพบคืนอะไร","หมุนวงล้อเป็น วัน + เพ็ญ ระวังตัวสะกด"]},
@@ -1397,6 +1429,7 @@ CASES.school = {
   items:{key:"กุญแจห้องพักครู"},
   skills:["คำพ้องเสียง","เรียงลำดับเหตุการณ์จากคำบอกเวลา","เปรียบเทียบข้อมูลหาข้อขัดแย้ง","อ่านตาราง","เรียงตามลำดับตัวอักษร"],
   keyClues:["blackboard","homework","attendance","statements","teacherLetter","cardsDone","borrow","confession"],
+  steps:[["blackboard","homework"],["attendance","statements"],["teacherLetter"],["cardsDone"],["borrow"],["confession"]],
   intro:{ bg:"c2s1_bg",
     html:`<p>กระดานชนวนแผ่นนี้เป็นของ <b>เด็กชายต้น</b> นักเรียนชั้น ป.๕ โรงเรียนบ้านกลางทุ่ง ที่มุมกระดานยังมีชื่อ “ด.ช.ต้น” เขียนด้วยดินสอหินเอาไว้</p>
       <p>บ่ายวันที่ ๒๐ กรกฎาคม ๒๕๓๐ ต้นจมน้ำในคลองข้างโรงเรียน ทุกคนเชื่อว่าเขาแอบหนีเรียนไปเล่นน้ำ สมุดความประพฤติบันทึกว่าเขาเป็นเด็กดื้อ และแม่ของต้นก็เชื่อแบบนั้นมาตลอด</p>
@@ -1433,6 +1466,7 @@ CASES.school = {
         else whisper("คำให้การสองแผ่นนั้น… มีแผ่นหนึ่งโกหก");
       },
       hs:[
+        {id:"teacher",x:61,y:15,w:9,h:70,label:"ครูสมพร",m:"none",show:S=>S.flags.contra,act:()=>msg("ครูสมพร","ครูกอดสมุดไว้แน่น แล้วพูดเสียงแผ่ว ๆ ว่า <b>“ก่อนเก่งย้ายโรงเรียน เขาไปนั่งในห้องสมุดทุกวัน… ครูไม่เคยรู้ว่าเขาไปทำอะไร”</b> ประตูห้องสมุดทางซ้ายเปิดแง้มออกเอง")},
         {id:"libdoor",x:0,y:5,w:11,h:60,label:"ประตูไปห้องสมุด",m:"wood",act:S=>S.flags.contra?go("library"):msg("ประตูไปห้องสมุด","ประตูลงกลอนจากอีกฝั่ง เขย่าเท่าไรก็ไม่ขยับ มีเสียงกระซิบลอดช่องประตูมาว่า “หาให้เจอก่อนว่าใครพูดไม่จริง…”")},
         {id:"attendance",x:11,y:56,w:15,h:11,label:"สมุดบนโต๊ะครู",m:"paper",act:()=>closeup("attendance")},
         {id:"records",x:48,y:42,w:11,h:6,label:"สมุดเล่มหนาบนโต๊ะครูใหญ่",m:"paper",act:()=>closeup("records")},
@@ -1440,7 +1474,6 @@ CASES.school = {
         {id:"clipboard",x:85,y:26,w:6,h:15,label:"แผ่นรองเขียนข้างตู้",m:"paper",act:()=>closeup("clipboard")},
         {id:"clock",x:91,y:1,w:7,h:16,label:"นาฬิกาแขวน",m:"metal",act:()=>msg("นาฬิกาแขวน","เข็มนาฬิกาหยุดนิ่งที่ <b>บ่ายโมงสี่สิบนาที</b> แต่คุณยังได้ยินเสียงติ๊กต่อก ติ๊กต่อก ดังอยู่ในห้อง")},
         {id:"fan",x:88.5,y:38,w:11.5,h:60,label:"พัดลม",m:"metal",act:()=>msg("พัดลมตั้งพื้น","พัดลมไม่ได้เสียบปลั๊ก แต่ใบพัดค่อย ๆ หมุนเองช้า ๆ … ลมเย็นเฉียบพัดมาโดนหน้าคุณ")},
-        {id:"teacher",x:61,y:15,w:9,h:70,label:"ครูสมพร",m:"none",show:S=>S.flags.contra,act:()=>msg("ครูสมพร","ครูกอดสมุดไว้แน่น แล้วพูดเสียงแผ่ว ๆ ว่า <b>“ก่อนเก่งย้ายโรงเรียน เขาไปนั่งในห้องสมุดทุกวัน… ครูไม่เคยรู้ว่าเขาไปทำอะไร”</b> ประตูห้องสมุดทางซ้ายเปิดแง้มออกเอง")}
       ]},
     library:{ name:"ห้องสมุด", bg:"c2s3_bg", locked:S=>!S.flags.contra,
       overlay:el=>{ el.innerHTML=[[62.2,27.8,"ก – ช"],[73.8,22.9,"ซ – ภ"],[91.4,16,"ม – ฮ"]].map(([x,y,t],i)=>`<span class="plate" style="left:${x}%;top:${y}%;font-size:${[1.05,1.15,1.4][i]}cqw">${t}</span>`).join(""); },
@@ -1486,13 +1519,13 @@ CASES.school = {
       hs:[{id:"photo",x:51,y:32,w:26,h:31,label:"กรอบรูปที่คว่ำไว้",m:"glass",act:()=>msg("รูปถ่ายที่คว่ำไว้","คุณพลิกกรอบรูปขึ้นมาดู เป็นรูปนักเรียน ป.๕ ทั้งห้อง แถวหน้ามีเด็กผู้ชายสองคนกอดคอกันยิ้มกว้าง ใต้รูปเขียนว่า <b>“ต้น เก่ง”</b>")}]},
     clipboard:{img:"c2s2_clipboard",panel:"left",doc:"statements",
       actions:S=>(!S.flags.contra&&S.read.includes("attendance"))?[{label:"หาคำให้การที่ไม่ตรงกับหลักฐาน",fn:openContra}]:[]},
-    cards:{img:"c2s3_cards",panel:"right",doc:S=>S.flags.seq?"cardsDone":"cardsNote",overlay:el=>drawCards(el)},
+    cards:{img:"c2s3_cards",gateAs:"cardsDone",panel:"right",doc:S=>S.flags.seq?"cardsDone":"cardsNote",overlay:el=>drawCards(el)},
     catalog:{img:"c2s3_catalog",panel:"right",doc:"borrow"},
     shelf:{img:"c2s3_shelf",panel:"right",doc:"shelfNote",
       overlay:el=>{ el.innerHTML=`<span class="plate" style="left:33.5%;top:85%;font-size:2.4cqw">ม – ฮ</span>`; },
       hs:[{id:"book",x:30,y:18,w:13,h:55,label:"หนังสือที่ถูกดึงออกมา",m:"paper",act:()=>closeup("bookOpen")}]},
     bookOpen:{img:"c2s3_bookopen",panel:"right",doc:"bookNote",
-      hs:[{id:"letter",x:40,y:40,w:26,h:38,label:"กระดาษที่พับซ่อนไว้",m:"paper",act:()=>{ showDocOver("confession"); whisper("เก่ง… นายเขียนมันไว้จริง ๆ ด้วย"); }}]}
+      hs:[{id:"letter",x:40,y:40,w:26,h:38,label:"กระดาษที่พับซ่อนไว้",m:"paper",act:()=>{ if(showDocOver("confession")) whisper("เก่ง… นายเขียนมันไว้จริง ๆ ด้วย"); }}]}
   },
   docs:{
     blackboard:{title:"กระดานดำ",key:1,html:`<p>บนกระดานเขียนด้วยชอล์กว่า</p><p class="hand">วันจันทร์ที่ ๒๐ กรกฎาคม ๒๕๓๐<br>งานคาบบ่าย วิชาศิลปะ: ทำว่าวคนละ ๑ ตัว<br><b>ห้ามนำว่าวออกไปนอกห้องเรียน</b></p><p class="note">มุมล่างของกระดานมีลายมือเด็กเขียนตัวเล็ก ๆ ว่า “ผมไม่ได้หนีเรียน” … ผงชอล์กยังเปียกอยู่เลย</p>`},
@@ -1627,6 +1660,7 @@ CASES.likay = {
   ghostWord:"ให้อภัย",
   skills:["อ่านบทละคร","อ่านตารางเวลา","ตรวจคำแก้ตัว","ถอดรหัส","อนุมานจากหลักฐาน"],
   keyClues:["script","log","tickets","ropeFinding","plate","scissors","letterDecoded"],
+  steps:[["script"],["log"],["ropeFinding","tickets"],["plate"],["scissors"],["letterDecoded"]],
   intro:{
     bg:"c3s1_bg",
     html:`<p>มงกุฎลิเกชิ้นนี้เป็นของ <b>แม่ขวัญใจ</b> นางเอกเสียงทองของคณะแสงจันทร์</p>
@@ -1689,6 +1723,7 @@ CASES.likay = {
         {id:"ropeL",x:30,y:0,w:19,h:82,label:"เชือกเส้นซ้าย",m:"rope",act:S=>{ if(S.flags.ropeSolved) return; msg("เชือกเส้นซ้าย","ปลายเชือกเส้นนี้รุ่ยเป็นขุย เส้นใยยาวไม่เท่ากัน… เชือกเส้นนี้ขาดเพราะเก่า ยังไม่ใช่เส้นที่เราตามหา ลองดูอีกเส้น"); }},
         {id:"ropeR",x:55,y:0,w:11,h:79,label:"เชือกเส้นขวา",m:"rope",act:S=>{
           if(S.flags.ropeSolved) return;
+          if(!clueOK("ropeFinding")){ notYet(); return; }
           S.flags.ropeSolved=1; readDoc("ropeFinding"); save(); render(); AU.sfx("right");
           whisper("ใครบางคนตัดเชือกเส้นนี้ไว้… รอให้ฉันไปยืนใต้ต้นไทร");
         }}
@@ -1711,7 +1746,7 @@ CASES.likay = {
     boxOpen:{img:"c3s3_box_open",panel:"left",doc:S=>S.flags.cipherSolved?"letterDecoded":"boxInside",
       hs:[
         {id:"scissors",x:39,y:56,w:12,h:14,label:"กรรไกร",m:"metal",act:S=>{ if(!S.items.includes("scissors")) S.items.push("scissors"); save(); closeup("scissorsView"); }},
-        {id:"letter",x:53,y:52,w:14,h:12,label:"จดหมายพับไว้",m:"paper",act:S=>S.flags.cipherSolved?showDocOver("letterDecoded","left"):openCipher()}
+        {id:"letter",x:53,y:52,w:14,h:12,label:"จดหมายพับไว้",m:"paper",act:S=>S.flags.cipherSolved?showDocOver("letterDecoded","left"):(clueOK("letterDecoded")?openCipher():notYet())}
       ]},
     scissorsView:{img:"item_scissors",panel:"right",doc:"scissors",backTo:"boxOpen"}
   },
@@ -1776,6 +1811,7 @@ CASES.likay = {
   hints:[
     {when:S=>!S.flags.doorOpen&&!S.read.includes("poster"),l:["ลองดูของรอบ ๆ เวที โดยเฉพาะของที่มีตัวหนังสือ","อ่านใบปิดการแสดงทางซ้ายของเวที","ชื่อเรื่องคือ นางไทรร้องไห้ ลองคิดว่าต้นไม้ในเรื่องคือต้นอะไร"]},
     {when:S=>!S.flags.doorOpen,l:["ประตูหลังเวทีทางขวาล็อกอยู่","อ่านป้ายที่ประตู แล้วเทียบกับชื่อเรื่องบนใบปิด","รหัสคือ ไ – ท – ร"]},
+    {when:S=>!S.read.includes("script"),l:["บนเวทียังมีเอกสารที่ยังไม่ได้อ่าน","อ่านบทลิเกบนแท่นวางบททางซ้ายของเวที","ดูใบรายชื่อนักแสดงคืนวันที่ ๔ เมษายน ว่าใครจะได้เป็นนางเอก"]},
     {when:S=>!S.read.includes("log"),l:["หลังเวทีมีสมุดเล่มหนึ่งวางอยู่บนโต๊ะ","อ่านสมุดเวรหลังเวทีให้ครบทุกแถว","ดูเวลาที่แม่ลำดวนไปหลังเวที และเวลาที่กลับมา"]},
     {when:S=>!S.flags.timeSolved,l:["สมุดเวรมีคำถามรออยู่","ช่วงฉากที่ ๒ ทุกคนอยู่หน้าเวที ยกเว้นคนที่เขียนชื่อไว้","คำตอบคือ ๒๐.๑๕ ถึง ๒๐.๓๐"]},
     {when:S=>!S.items.includes("gem")&&!S.flags.boxOpen,l:["ลองดูใต้ฉากต้นไทรที่หล่นลงมา","ใต้ขอบฉากมีของเล็ก ๆ ส่องแสงอยู่","แตะเพชรสีเขียวใต้ฉาก"]},
@@ -1818,6 +1854,7 @@ CASES.station = {
   items:{key:"กุญแจห้องพัสดุ"},
   skills:["อ่านตารางเวลา","อ่านแผนที่","อ่านแยกคำที่คล้ายกัน","อ่านจับใจความจดหมาย","อ่านตารางทะเบียน"],
   keyClues:["postcard","timetable","dutyLog","mapNote","sackNote","ledger","maliLetter","card"],
+  steps:[["postcard","dutyLog"],["timetable"],["mapNote"],["sackNote","ledger"],["maliLetter"],["card"]],
   intro:{ bg:"c4s1_bg",
     html:`<p>นาฬิกาพกเรือนนี้เป็นของ <b>ลุงบุญมี</b> [[นายสถานี|หัวหน้าที่ดูแลสถานีรถไฟ]]รถไฟหนองบัว เข็มนาฬิกาหยุดนิ่งอยู่ที่ <b>๑๖.๓๐ น.</b> มาหลายสิบปีแล้ว</p>
       <p>ลุงบุญมีมีลูกสาวคนเดียวชื่อ <b>มาลี</b> ไปทำงานที่กรุงเทพฯ เธอสัญญาว่าจะกลับบ้านวันสงกรานต์ ๑๓ เมษายน ๒๕๑๙ แต่วันนั้นมาลีไม่ได้ลงจากรถไฟ และไม่มีข่าวคราวอีกเลย</p>
@@ -1908,7 +1945,7 @@ CASES.station = {
         S.items=S.items.filter(i=>i!=="key"); S.flags.parcelOpen=1; save(); AU.sfx("unlock"); whisper("แกร๊ก… ประตูห้องพัสดุเปิดแล้ว"); setTimeout(()=>go("parcel"),700); }}]},
     sack:{img:"c4s3_sack",panel:"right",doc:"sackNote",
       overlay:el=>{ el.innerHTML=`<div class="stamp" style="left:23.5%;top:46.5%"><b style="font-size:2.9cqw">ตีกลับ</b><br><span style="font-size:1.25cqw">ไม่มีผู้รับตามที่อยู่<br>ป.ณ. หนองบัวใต้ ๙ เม.ย. ๑๙</span></div>`; }},
-    envelopes:{img:"c4s3_envelopes",overlay:el=>drawEnvelopes(el),
+    envelopes:{img:"c4s3_envelopes",gateAs:"maliLetter",overlay:el=>drawEnvelopes(el),
       enter:()=>whisper("จดหมายของมาลีคือซองไหน… อ่านหน้าซองให้ละเอียดทุกคำ")},
     ledger:{img:"c4s3_ledger",panel:"right",doc:"ledger",wideDoc:1},
     letter:{img:"c4s3_letter",panel:"left",doc:"maliLetter",
@@ -2032,6 +2069,7 @@ CASES.puhem = {
   ghostName:"ปู่เหม", verdictName:"ลุงต่อ", ghostWord:"ขอบใจ",
   skills:["จับผิดข้อความกับหลักฐาน","อ่านข่าว","เชื่อมโยงข้อมูลข้ามเรื่อง","เติมคำตามบริบท","สรุปความ"],
   keyClues:["counter","ledger","calendar","mirror","puQuotes","newspaper","painting","sketch","letterDone","torTalk"],
+  steps:[["counter","ledger","calendar","mirror"],["puQuotes"],["newspaper","painting","sketch"],["letterDone"],["torTalk"]],
   intro:{ bg:"c5s1_bg",
     html:`<p>หลานช่วยวิญญาณทั้งสี่ตนให้ได้ไปเกิดครบแล้ว แต่คืนนี้ร้านเงียบผิดปกติ <b>ปู่เหมไม่ได้ยืนอยู่หลังเคาน์เตอร์</b> เหมือนทุกคืน</p>
       <p>ตรงที่ปู่เคยยืน มีพวง<b>กุญแจร้าน</b>เก่าวางอยู่ ครึ่งหนึ่งไหม้ดำเหมือนเคยอยู่ในกองไฟ</p>
@@ -2093,7 +2131,7 @@ CASES.puhem = {
     painting:{img:"c5s2_painting",panel:"left",doc:"painting",
       overlay:el=>{ el.innerHTML=`<span class="sigtxt" style="left:72.5%;top:77%">ต่อ ๒๕๓๙</span>`; }},
     sketchbook:{img:"c5s2_sketchbook",panel:"right",doc:"sketch"},
-    desk:{img:"c5s2_desk",panel:"right",doc:S=>S.read.includes("letterDone")?"letterDone":"deskNote",
+    desk:{img:"c5s2_desk",gateAs:"letterDone",panel:"right",doc:S=>S.read.includes("letterDone")?"letterDone":"deskNote",
       actions:S=>S.read.includes("letterDone")?[]:[{label:"เติมจดหมายให้สมบูรณ์",fn:openLetter}]},
     tor:{img:"c5s3_tor",panel:"left",doc:"torTalk",lit:1,
       actions:()=>[{label:"ยื่นจดหมายของปู่ให้ลุงต่อ",fn:askVerdict}]}
@@ -2335,7 +2373,8 @@ function go(sceneId){
   AU.scene(typeof sc.audio==="function"?sc.audio(S):(sc.audio||sceneId)); heartDefault();
   sc.enter&&sc.enter(S);
 }
-function closeup(id){ if(S.view!==id) AU.sfx("zoom"); S.view=id; save(); render(); const cu=C.closeups[id]; cu.enter&&cu.enter(S); if(cu.heart) AU.heart(true,bpm()+6); else heartDefault(); }
+function closeup(id){ { const c0=C.closeups[id], d0=c0.gateAs||(typeof c0.doc==="function"?c0.doc(S):c0.doc); if(!clueOK(d0)){ notYet(); return; } }
+  if(S.view!==id) AU.sfx("zoom"); S.view=id; save(); render(); const cu=C.closeups[id]; cu.enter&&cu.enter(S); if(cu.heart) AU.heart(true,bpm()+6); else heartDefault(); }
 function render(){
   const sc=C.scenes[S.scene], cu=S.view?C.closeups[S.view]:null;
   const bgName = cu?(typeof cu.img==="function"?cu.img(S):cu.img) : ((sc.bgAlt&&sc.bgAlt(S))||sc.bg);
@@ -2384,7 +2423,7 @@ function renderBar(){
   const r=(S.view?[0,20,25,30]:[0,12,16,20])[S.candles]; $("dark").style.setProperty("--r",r+"cqw"); frame.classList.toggle("closeup",!!S.view);
 }
 $("game").addEventListener("click",e=>{ if(!e.target.closest("button,#panel,#bar,#modal")){ AU.sfx("tap"); mashCheck(); } });
-$("back").addEventListener("click",()=>{ AU.sfx("back"); const cu=C.closeups[S.view]; if(cu&&cu.backTo) closeup(cu.backTo); else go(S.scene); });
+$("back").addEventListener("click",()=>{ AU.sfx("back"); const cu=C.closeups[S.view]; if(cu&&cu.backTo) closeup(cu.backTo); else go(S.scene); if(cu&&cu.doc) maybeDash(); });
 
 /* ---------- docs ---------- */
 function fmt(html){ return html.replace(/\[\[([^|\]]+)\|([^\]]+)\]\]/g,'<span class="vocab" tabindex="0" data-def="$2">$1</span>'); }
@@ -2405,9 +2444,37 @@ function wireDoc(root,id,acts=[]){
 function readDoc(id){ if(id&&C.docs[id]&&!S.read.includes(id)){ S.read.push(id); save(); if(C.docs[id].key) AU.sfx("key");
     if(C.onAllClues&&!S.flags.allClues&&C.keyClues.every(k=>S.read.includes(k))){ S.flags.allClues=1; save(); C.onAllClues(S); } renderBar&&$("counter")&&renderBar(); } }
 function showDocOver(id,side){
+  if(!clueOK(id)){ notYet(); return false; }
   AU.sfx("crumple"); readDoc(id);
-  modal(`<div class="card paper doc docsheet">${docHTML(id,`<button class="pbtn" data-a="close">ปิด</button>`)}</div>`,{close:closeModal},root=>wireDoc(root,id));
+  modal(`<div class="card paper doc docsheet">${docHTML(id,`<button class="pbtn" data-a="close">ปิด</button>`)}</div>`,{close:()=>{ closeModal(); maybeDash(); }},root=>wireDoc(root,id));
+  return true;
 }
+/* key clues open in story order: a clue is ready only when every clue in the earlier steps has been read */
+function clueOK(id){
+  if(!id||!C||!C.steps||S.read.includes(id)) return true;
+  const i=C.steps.findIndex(g=>g.includes(id)); if(i<0) return true;
+  return C.steps.slice(0,i).every(g=>g.every(k=>S.read.includes(k)));
+}
+function notYet(){
+  AU.sfx("whisper"); AU.sfx("flicker"); Mash.t.push(performance.now());           // counts as a careless tap too
+  const n=$("notyet"); n.classList.remove("on"); void n.offsetWidth; n.classList.add("on");
+}
+/* a black shadow darts across the lens: now and then, or as you look up from a document */
+let dashCool=0,dashT=0;
+function maybeDash(force){
+  if(!SET.scary||!S||!C||$("game").hidden||!$("jump").hidden||matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const now=performance.now(); if(now<dashCool) return;
+  if(!force&&Math.random()>(SET.scary>1?.45:.3)) return;
+  dashCool=now+(SET.scary>1?15000:25000);
+  setTimeout(()=>{
+    const d=$("dash"), rl=Math.random()<.5; d.className=""; void d.offsetWidth;
+    d.style.top=(Math.random()*18-30)+"%"; d.className=rl?"go rl":"go"; AU.sfx("whoosh",{dir:rl?-1:1}); quake();
+    setTimeout(()=>frame.classList.add("dim"),170); setTimeout(()=>frame.classList.remove("dim"),420);
+    setTimeout(()=>d.className="",700);
+  },250+Math.random()*500);
+}
+function dashLoop(){ clearTimeout(dashT); dashT=setTimeout(()=>{ if($("modal").hidden) maybeDash(true); dashLoop(); },(SET.scary>1?22000:38000)+Math.random()*40000); }
+dashLoop();
 
 
 /* ---------- full-screen ghost lunge (title idle + tapping at random) ---------- */
@@ -2794,6 +2861,6 @@ $("btnTitle").addEventListener("click",()=>show("title"));
 $("btnPlay").addEventListener("mouseenter",()=>AU.sfx("ui"));
 $("btnFull").addEventListener("click",()=>{ try{ document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{}); }catch(e){} });
 load(); applySettings(); show("gate");
-window.__game={get S(){return S}, get Mash(){return Mash}, CASES, openHub, startCase, Title, closeup:id=>closeup(id), go:id=>go(id)};
+window.__game={get S(){return S}, get Mash(){return Mash}, CASES, openHub, startCase, Title, closeup:id=>closeup(id), go:id=>go(id), dash:()=>{ dashCool=0; maybeDash(true); }};
 })();
 </script>
