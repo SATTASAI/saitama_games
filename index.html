@@ -1,7 +1,7 @@
 <title>ร้านของเก่าปู่เหม</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Charm:wght@400;700&family=Chonburi&family=Taviraj:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Charm:wght@400;700&family=Chonburi&family=Srisakdi:wght@700&family=Taviraj:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 :root{
   --night:#07090b; --paper:#e8d9b5; --paper2:#d9c49a; --ink:#2a1d12; --ink2:#5a4630;
@@ -71,6 +71,20 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--jade);outl
 @keyframes jflash{0%{opacity:0}6%{opacity:.8}11%{opacity:0}55%{opacity:0}58%{opacity:.45;background:#8a0000}64%{opacity:0}}
 .jmsg{position:absolute;inset:0;display:grid;place-items:center;color:var(--jade);font-size:1.9cqw;font-style:italic;opacity:0;transition:opacity .9s;pointer-events:none}
 .jmsg.on{opacity:1}
+#mashWarn{position:absolute;inset:0;z-index:35;display:grid;place-items:center;pointer-events:none;opacity:0;transition:opacity .5s}
+#mashWarn.on{opacity:1}
+.blood{position:relative;display:inline-block;font-family:"Srisakdi","Chonburi",serif;font-weight:700;font-size:8.5cqw;line-height:1.2;font-style:normal;letter-spacing:.02em;
+  background:linear-gradient(180deg,#e8190f 0%,#9c0404 45%,#4d0000 100%);-webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 .08cqw #1a0000) drop-shadow(0 .35cqw .5cqw rgba(0,0,0,.9)) drop-shadow(0 0 2.5cqw rgba(150,0,0,.55))}
+#mashWarn.on .blood,.jmsg.on .blood{animation:bslam .45s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes bslam{0%{transform:scale(2.4) rotate(-4deg);opacity:0}60%{opacity:1}100%{transform:scale(1) rotate(-2deg)}}
+.blood i{position:absolute;top:62%;width:.55cqw;height:0;border-radius:0 0 .5cqw .5cqw;background:linear-gradient(180deg,#8e0303,#5a0000);animation:bdrip 2.6s ease-in forwards}
+.blood i::after{content:"";position:absolute;left:50%;bottom:-.5cqw;width:1cqw;height:1.2cqw;transform:translateX(-50%);border-radius:50% 50% 50% 50%/60% 60% 40% 40%;background:#6e0000}
+@keyframes bdrip{to{height:var(--h,6cqw)}}
+.blood b{position:absolute;border-radius:50%;background:radial-gradient(circle,#9c0404 0,#6a0000 60%,transparent 72%);pointer-events:none}
+.blood.big{font-size:12cqw}
+.blood.calm{background:linear-gradient(180deg,#d8c9a8,#8f7a55);-webkit-background-clip:text;background-clip:text;filter:drop-shadow(0 .3cqw .4cqw rgba(0,0,0,.9))}
+.jmsg .sub{display:block;margin-top:2.4cqh;font-family:"Taviraj",serif;font-size:1.6cqw;color:#e8d7c0;font-style:italic;text-shadow:0 0 .6cqw #000}
 .row{display:flex;gap:1cqw;flex-wrap:wrap;align-items:center}
 .btn{background:rgba(10,14,17,.7);border:1px solid #58666c;border-radius:.4cqw;padding:.7cqh 1.2cqw;font-size:1.25cqw;color:var(--text)}
 .btn:hover{border-color:var(--jade);color:#fff}
@@ -392,6 +406,7 @@ button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--jade);outl
     <div class="copy" id="endCopy"></div>
   </section>
 
+  <div id="mashWarn" aria-live="assertive"></div>
   <div id="jump" hidden>
       <div class="jstage">
         <img class="face r" id="jumpR" alt="">
@@ -1131,7 +1146,29 @@ const AU = (() => {
         case "steps": footsteps(t, sfxBus, -.2, .2, 3); break;
         case "ui": clack(t, sfxBus, .02); break;
         case "scream": scream(t, sfxBus); break;
-        case "growl": {        // an angry, rattling growl right before the lunge
+        case "mash": {         // each careless tap: the haunting gets louder and changes tone (k 0..1)
+          const k = Math.max(0, Math.min(1, o.k || 0)), d = .9 + k * .6, pan = pick([-1, 1]) * R(.3, .9);
+          whisperSnd(t, sfxBus, pan, Math.floor(3 + k * 6), .06 + k * .16);                    // whispers, closer and louder
+          { // low drone that climbs and distorts
+            const f = 42 + k * 70, a = O("sawtooth", f), b = O("sawtooth", f * (1.02 + k * .09)), sh = ctx.createWaveShaper(), cv = new Float32Array(256);
+            for (let i = 0; i < 256; i++) { const x = i / 127.5 - 1; cv[i] = Math.tanh(x * (1 + k * 7)); } sh.curve = cv;
+            const lp = F("lowpass", 300 + k * 1500), g = G(0); a.connect(sh); b.connect(sh); sh.connect(lp); lp.connect(g); route(g, sfxBus, .4);
+            a.frequency.setValueAtTime(f, t); a.frequency.linearRampToValueAtTime(f * (1 + k * .25), t + d);
+            hit(g, t, .08, .05 + k * .22, d); [a, b].forEach(x => { x.start(t); x.stop(t + d + .1); });
+          }
+          if (k > .25) { // dissonant ghost choir, pitch and detune rising with every tap
+            const base = 180 * (1 + k * 1.6), v = G(1); route(v, sfxBus, .8);
+            [1, 1.06 + k * .05, 1.41, 1.5 - k * .04].forEach((r, i) => { const x = O(i % 2 ? "triangle" : "sine", base * r), g = G(0), vib = O("sine", 5 + k * 9), vg = G(base * .02 * k);
+              vib.connect(vg); vg.connect(x.frequency); x.connect(g); g.connect(v); hit(g, t + .05, .15, (.02 + k * .05) / (i + 1), d); [x, vib].forEach(y => { y.start(t); y.stop(t + d + .2); }); });
+          }
+          if (k > .6) { // a thin scream sliding up, the ghost is almost here
+            const x = O("sawtooth", 700 + k * 500), bp = F("bandpass", 1800, 3), g = G(0); x.frequency.setValueAtTime(700 + k * 400, t); x.frequency.exponentialRampToValueAtTime(1400 + k * 1200, t + d);
+            x.connect(bp); bp.connect(g); route(g, sfxBus, .6); hit(g, t + .1, .2, .03 + k * .08, d); x.start(t); x.stop(t + d + .2);
+          }
+          if (k > .8) knock(t + .15, sfxBus, -pan, 3);
+          break;
+        }
+        case "growl": {
           const d = .75, o = O("sawtooth", 62), o2 = O("sawtooth", 93), sh = ctx.createWaveShaper(), cv = new Float32Array(512);
           for (let i = 0; i < 512; i++) { const x = i / 255.5 - 1; cv[i] = Math.tanh(x * 5); } sh.curve = cv;
           const am = O("square", 19), ag = G(.5), g = G(0), bp = F("bandpass", 420, 1.4), n = N(false, t, d), ng = G(.5);
@@ -2377,7 +2414,7 @@ function showDocOver(id,side){
 function jumpScare(text,done,img){
   const j=$("jump"); if(!j.hidden) return;
   const face=IMG[img]||IMG.jump_face;
-  $("jumpImg").src=face; $("jumpR").src=face; $("jmsg").textContent=text;
+  $("jumpImg").src=face; $("jumpR").src=face; if(text&&text.html) $("jmsg").innerHTML=text.html; else $("jmsg").textContent=text;
   j.hidden=false; j.classList.remove("go"); $("jmsg").classList.remove("on"); void j.offsetWidth; j.classList.add("go");
   AU.heart(false); AU.sfx("scream"); quake();
   setTimeout(()=>{ j.classList.remove("go"); $("jumpImg").style.opacity=0; $("jumpR").style.opacity=0; $("jmsg").classList.add("on"); },1750);
@@ -2385,21 +2422,34 @@ function jumpScare(text,done,img){
 }
 /* tapping empty spots fast and often wakes the ghost: warning first, then the lunge */
 const Mash={t:[],warned:0,cool:0};
+/* "จงระวังให้ดี!" in dripping blood */
+function bloodHTML(txt,calm,big){
+  if(calm) return `<span class="blood calm">${txt}</span>`;
+  const drips=[[9,7],[21,4],[34,9],[47,5],[58,11],[71,6],[86,8]].map(([x,h],i)=>`<i style="left:${x}%;--h:${h}cqw;animation-delay:${.15+i*.13}s"></i>`).join("");
+  const spl=[[-4,10,3.2],[98,4,2.4],[40,-18,1.8],[76,78,2.6],[14,82,1.6]].map(([x,y,r])=>`<b style="left:${x}%;top:${y}%;width:${r}cqw;height:${r}cqw"></b>`).join("");
+  return `<span class="blood${big?" big":""}">${spl}${txt}${drips}</span>`;
+}
+let warnT=0;
+function showWarn(){
+  const w=$("mashWarn"); w.innerHTML=bloodHTML("จงระวังให้ดี!",SET.scary===0); w.classList.remove("on"); void w.offsetWidth; w.classList.add("on");
+  clearTimeout(warnT); warnT=setTimeout(()=>w.classList.remove("on"),2400);
+}
+/* tapping fast and often: the haunting grows louder and changes tone with every tap, a bloody warning, then the lunge */
 function mashCheck(){
   const now=performance.now();
   Mash.t=Mash.t.filter(x=>now-x<5000); Mash.t.push(now);
   if(Mash.t.length===1) Mash.warned=0;
   if(now<Mash.cool||!$("jump").hidden||!$("modal").hidden) return;
   const lim=SET.scary===2?5:7, n=Mash.t.length;
-  if(n>=Math.ceil(lim*.6)&&!Mash.warned){ Mash.warned=1; whisper(pickOne(["อย่าแตะมั่วสิ… ฉันไม่ชอบ","ชู่ว… ค่อย ๆ มองหา อย่าแตะไปทั่ว","ใครน่ะ… มาเคาะอะไรตรงนี้"])); return; }
+  if(n>=2&&n<lim){ const k=(n-1)/(lim-1); AU.sfx("mash",{k}); if(SET.scary) AU.heart(true,80+Math.round(k*80)); }
+  if(n>=Math.ceil(lim*.6)&&!Mash.warned){ Mash.warned=1; showWarn(); return; }
   if(n>=lim){
     Mash.t=[]; Mash.cool=now+45000;
-    if(SET.scary===0){ whisper("ค่อย ๆ มองหานะ… แตะมั่วไปก็ไม่เจอหรอก"); return; }
+    if(SET.scary===0){ showWarn(); AU.heart(false); return; }
     const A=(C&&C.angry)?(C.angry[S.scene]||C.angry._):null;
-    if(A){ whisper(A[1]); $("whisper").classList.add("angry"); }
-    AU.sfx("growl"); AU.heart(true,150);
-    setTimeout(()=>{ $("whisper").classList.remove("angry");
-      jumpScare("แตะมั่วไปก็ไม่เจอ… ค่อย ๆ มองหา แล้วอ่านให้ดี",()=>{ if(S&&C) heartDefault(); }, A&&A[0]); },750);
+    AU.sfx("mash",{k:1}); AU.sfx("growl"); AU.heart(true,150);
+    setTimeout(()=>{ $("mashWarn").classList.remove("on");
+      jumpScare({html:bloodHTML("จงระวัง!",false,1)},()=>{ if(S&&C) heartDefault(); }, A&&A[0]); },700);
   }
 }
 const pickOne=a=>a[Math.floor(Math.random()*a.length)];
